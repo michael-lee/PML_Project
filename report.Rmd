@@ -1,0 +1,76 @@
+---
+title: 'Practical Machine Learning Project: Weight Lifting Exercise Recognition'
+author: "Michael Lee"
+date: "September 13, 2015"
+output:
+  html_document: default
+---
+
+## Introduction
+
+In this project, we built a machine learning model to classify weight lifting motions. By using data collected from wearable sensors, our model classifies their weight lifting motions based on given sets of readings, and predicts how the participants did their exercises. 
+
+## Data Preparation
+
+```{r}
+library(caret)
+set.seed(8809)
+train.data <- read.csv("./data/pml-training.csv", na.strings = c("NA", ""))
+```
+
+The Caret library was loaded and the random number generator's seed was set for reproducibility. The training data was loaded. The training data consists of 19622 observations and 160 variables. Our model was to predict the (```classe```) variable.
+
+```{r}
+train.data <- subset(train.data, select = -c(1:7))
+train.data <- train.data[, colSums(is.na(train.data)) == 0]
+dim(train.data)
+```
+
+The data was first cleaned up by removing observations with blank values and some variables unrelated to the activity classe. The first seven columns are about the data collection environment and can be removed. After the cleansing, the data now consists of 19622 observations and 53 variables.
+
+## Data Slicing
+
+The data was splitted into training set and validation set. The validation set was used to conduct cross validation. 4/5 of the data was used for training and 1/5 was used for validation. 
+
+```{r}
+inTrain <- createDataPartition(train.data$classe, p = 0.8, list = F)
+training <- train.data[inTrain, ]
+valset <- train.data[-inTrain, ]
+```
+
+## Cross Validation
+
+A **Random Forest** model was trained. 5-fold cross validation was set for training control.
+
+```{r}
+tc <- trainControl(method = "cv", number = 5, repeats = 5)
+fit <- train(classe ~ ., data=training, trControl = tc, method="rf")
+fit$results
+```
+
+The performance of the model on the validation set is as follows.
+
+```{r}
+pred <- predict(fit, valset)
+cm <- confusionMatrix(valset$classe, pred)
+accuracy <- postResample(pred, valset$classe)
+accuracy
+error <- 1 - as.numeric(cm$overall[1])
+error
+```
+
+The estimated accuracy of the model is 99.57% and the esimated out-of-sample error is 0.43%.
+
+## Prediction for Testing Data Set
+
+Now we can apply the model to the provided testing data set to predict the (```classe```).
+
+```{r}
+testing.data <- read.csv("./data/pml-testing.csv")
+result <- predict(fit, testing.data)
+result
+```
+
+## Conclusion
+
+We have presented the process for training a random forest model and have obtained a model with very high accuracy.
